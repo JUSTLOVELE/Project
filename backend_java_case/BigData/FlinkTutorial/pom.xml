@@ -36,6 +36,16 @@
             <artifactId>flink-connector-elasticsearch6_2.12</artifactId>
             <version>1.10.1</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-table-planner_2.12</artifactId>
+            <version>1.10.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-table-api-scala-bridge_2.12</artifactId>
+            <version>1.10.1</version>
+        </dependency>
 <!--        <dependency>-->
 <!--            <groupId>org.apache.bahir</groupId>-->
 <!--            <artifactId>flink-connector-redis-2.11</artifactId>-->
