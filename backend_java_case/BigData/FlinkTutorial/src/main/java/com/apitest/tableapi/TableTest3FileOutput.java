@@ -1,54 +1,34 @@
-package com.apitest.tableapi;
-
-import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.table.api.DataTypes;
-import org.apache.flink.table.api.EnvironmentSettings;
-import org.apache.flink.table.api.Table;
-import org.apache.flink.table.api.TableEnvironment;
-import org.apache.flink.table.api.java.BatchTableEnvironment;
-import org.apache.flink.table.api.java.StreamTableEnvironment;
-import org.apache.flink.table.descriptors.Csv;
-import org.apache.flink.table.descriptors.FileSystem;
-import org.apache.flink.table.descriptors.Schema;
-import org.apache.flink.types.Row;
-
-/**
+package com.apitest.tableapi;/**
+ /**
  * @author yangzl 2021.08.02
  * @version 1.00.00
  * @Description:
  * @history:
  */
-public class TableTest2CommonApi {
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.descriptors.Csv;
+import org.apache.flink.table.descriptors.FileSystem;
+import org.apache.flink.table.descriptors.Schema;
 
+/**
+ * @ClassName: TableTest3_FileOutput
+ * @Description:
+ * @Author: wushengran on 2020/11/13 11:54
+ * @Version: 1.0
+ */
+public class TableTest3FileOutput {
     public static void main(String[] args) throws Exception {
         // 1. 创建环境
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setParallelism(1);
+
         StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
-        // 1.1 基于老版本planner的流处理
-        EnvironmentSettings oldStreamSettings = EnvironmentSettings.newInstance()
-                .useOldPlanner()
-                .inStreamingMode()
-                .build();
-        StreamTableEnvironment oldStreamTableEnv = StreamTableEnvironment.create(env, oldStreamSettings);
-        // 1.2 基于老版本planner的批处理
-        ExecutionEnvironment batchEnv = ExecutionEnvironment.getExecutionEnvironment();
-        BatchTableEnvironment oldBatchTableEnv = BatchTableEnvironment.create(batchEnv);
-        // 1.3 基于Blink的流处理
-        EnvironmentSettings blinkStreamSettings = EnvironmentSettings.newInstance()
-                .useBlinkPlanner()
-                .inStreamingMode()
-                .build();
-        StreamTableEnvironment blinkStreamTableEnv = StreamTableEnvironment.create(env, blinkStreamSettings);
-        // 1.4 基于Blink的批处理
-        EnvironmentSettings blinkBatchSettings = EnvironmentSettings.newInstance()
-                .useBlinkPlanner()
-                .inBatchMode()
-                .build();
-        TableEnvironment blinkBatchTableEnv = TableEnvironment.create(blinkBatchSettings);
+
         // 2. 表的创建：连接外部系统，读取数据
-        // 2.1 读取文件
+        // 读取文件
         String filePath = "C:\\develop\\github\\MobileDevStudy\\backend_java_case\\BigData\\FlinkTutorial\\src\\main\\resources\\sensor.txt";
         tableEnv.connect( new FileSystem().path(filePath))
                 .withFormat( new Csv())
@@ -62,23 +42,36 @@ public class TableTest2CommonApi {
         Table inputTable = tableEnv.from("inputTable");
 //        inputTable.printSchema();
 //        tableEnv.toAppendStream(inputTable, Row.class).print();
+
         // 3. 查询转换
         // 3.1 Table API
         // 简单转换
         Table resultTable = inputTable.select("id, temp")
                 .filter("id === 'sensor_6'");
+
         // 聚合统计
         Table aggTable = inputTable.groupBy("id")
                 .select("id, id.count as count, temp.avg as avgTemp");
+
         // 3.2 SQL
         tableEnv.sqlQuery("select id, temp from inputTable where id = 'senosr_6'");
         Table sqlAggTable = tableEnv.sqlQuery("select id, count(id) as cnt, avg(temp) as avgTemp from inputTable group by id");
-        // 打印输出
-        tableEnv.toAppendStream(resultTable, Row.class).print("result");
-        tableEnv.toRetractStream(aggTable, Row.class).print("agg");
-        tableEnv.toRetractStream(sqlAggTable, Row.class).print("sqlagg");
+
+        // 4. 输出到文件
+        // 连接外部文件注册输出表
+        String outputPath = "C:\\develop\\github\\MobileDevStudy\\backend_java_case\\BigData\\FlinkTutorial\\src\\main\\resources\\sensor_out.txt";
+        tableEnv.connect( new FileSystem().path(outputPath))
+                .withFormat( new Csv())
+                .withSchema( new Schema()
+                        .field("id", DataTypes.STRING())
+//                        .field("cnt", DataTypes.BIGINT())
+                        .field("temperature", DataTypes.DOUBLE())
+                )
+                .createTemporaryTable("outputTable");
+
+        resultTable.insertInto("outputTable");
+//        aggTable.insertInto("outputTable");
 
         env.execute();
-
     }
 }
